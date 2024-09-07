@@ -2,4 +2,3 @@ __pycache__
 .env
 .python-version
 paper/
-data/

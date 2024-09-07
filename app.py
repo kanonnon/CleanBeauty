@@ -12,7 +12,7 @@ from linebot.models import FollowEvent, MessageEvent, TextMessage, TextSendMessa
 
 from rag import return_rag_result
 
-load_dotenv('.env')
+load_dotenv()
 
 line_bot_api = LineBotApi(os.getenv('LINE_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.getenv('LINE_CHANNEL_SECRET'))
