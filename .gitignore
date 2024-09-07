@@ -2,3 +2,5 @@ __pycache__
 .env
 .python-version
 database.db
+paper/
+data/

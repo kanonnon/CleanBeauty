@@ -1,6 +1,5 @@
 import os
 import sqlite3
-from datetime import datetime, date
 from dotenv import load_dotenv
 from flask import Flask, request, abort
 from linebot import (
@@ -11,9 +10,9 @@ from linebot.exceptions import (
 )
 from linebot.models import FollowEvent, MessageEvent, TextMessage, TextSendMessage
 
-# from rag import return_rag_result
+from rag import return_rag_result
 
-load_dotenv()
+load_dotenv('.env')
 
 line_bot_api = LineBotApi(os.environ.get('LINE_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('LINE_CHANNEL_SECRET'))
@@ -50,9 +49,9 @@ def handle_follow(event):
     Handle follow event
     """
     line_id = event.source.user_id
-    c.execute('INSERT INTO users (line_id,) VALUES (?,)', (line_id,))
+    c.execute('INSERT INTO users (line_id) VALUES (?)', (line_id,))
     conn.commit()
-    welcome_message = "追加ありがとうございます😆このアカウントはクリーンビューティーに関する質問について、論文を基にお答えします。"
+    welcome_message = "追加ありがとうございます！\nこのアカウントはクリーンビューティーに関する質問について、論文の情報をもとに丁寧にお答えします！"
     line_bot_api.push_message(
         to=line_id,
         messages=[
@@ -86,4 +85,3 @@ def handle_text_message(event):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080)
-

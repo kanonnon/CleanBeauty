@@ -18,7 +18,6 @@ line-bot-sdk==1.16.0
 openai==1.35.10
 python-dotenv
 tqdm
-langchain_community
-langchain-core
-langchain-openai
-langchain
+langchain_community==0.0.10
+langchain-openai==0.0.2
+langchain==0.1.0

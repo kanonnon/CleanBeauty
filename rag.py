@@ -1,35 +1,37 @@
 from dotenv import load_dotenv
-from tqdm import tqdm
+import numpy as np
+from openai import OpenAI
+from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.runnables import RunnablePassthrough
-from langchain.embeddings import HuggingFaceEmbeddings
 
 
-def load_sections():
-    all_sections = []
-    with open("sections.txt", "r") as file:
-        for line in file:
-            section = line.strip()
-            all_sections.append(section)
-    return all_sections
+client = OpenAI()
 
 
-def find_similar_contexts(sections, user_question, top_n=5):
-    print("Finding similar contexts...")
-    embedding = HuggingFaceEmbeddings(model_name = "oshizo/sbert-jsnli-luke-japanese-base-lite", encode_kwargs={"normalize_embeddings":True})
-    vector_stores = FAISS.from_texts(sections, embedding)
-    distances = vector_stores.similarity_search_with_score(user_question)
-    sorted_distances = sorted(distances, key=lambda x: x[1])
-    similar_contexts = sorted_distances[:top_n]
-    print("Finished finding similar contexts")
+def get_embedding(text, model="text-embedding-3-small"):
+   text = text.replace("\n", " ")
+   return client.embeddings.create(input = [text], model=model).data[0].embedding
+
+
+def find_similar_contexts(query, top_n=5):
+    print(query)
+    query_embedding = get_embedding(query)
+    embeddings = np.load("data/embedded_paper.npy")
+    similarities = cosine_similarity([query_embedding], embeddings)[0]
+    top_indices = np.argsort(similarities)[-(top_n):][::-1]
+    top_similarities = similarities[top_indices]
+    with open("data/loaded_paper.txt", "r") as file:
+        lines = file.readlines()
+    similar_contexts = [(lines[index], similarity) for index, similarity in zip(top_indices, top_similarities)]
     return similar_contexts
 
 
 def concat_similar_contexts(similar_contexts):
-    similar_contexts = [context[0].page_content for context in similar_contexts]
+    similar_contexts = [context[0] for context in similar_contexts]
     similar_context = "\n".join(similar_contexts)
     return similar_context
 
@@ -39,7 +41,9 @@ def create_answer(context, user_question):
     retriever = vector_store.as_retriever()
 
     template = '''
-        以下の文脈のみに基づいて質問に答えなさい。日本語で答えなさい。: {context}
+        質問内容が以下の文脈と関連のある場合、この文脈のみに基づいて質問に答えなさい。
+        関連のない場合、一般的な知識をもとに答えなさい。
+        日本語で論理的に答えなさい。: {context}
         質問: {question}
     '''
     prompt = ChatPromptTemplate.from_template(template)
@@ -55,8 +59,7 @@ def create_answer(context, user_question):
 
 def return_rag_result(user_question):
     load_dotenv()
-    sections = load_sections()
-    similar_contexts = find_similar_contexts(sections, user_question)
+    similar_contexts = find_similar_contexts(user_question)
     similar_context = concat_similar_contexts(similar_contexts)
     answer = create_answer(similar_context, user_question)
-    print(answer)
+    return answer
