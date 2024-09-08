@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from dotenv import load_dotenv
-from flask import Flask, request, abort
+from flask import Flask, request, abort, send_file
 from linebot import (
     LineBotApi, WebhookHandler
 )
@@ -81,7 +81,15 @@ def handle_text_message(event):
                 TextSendMessage(text=result)
             ]
     )
-    
+
+
+@app.route('/download-db', methods=['GET'])
+def download_db():
+    if os.path.exists("database.db"):
+        return send_file("database.db", as_attachment=True)
+    else:
+        return "Database file not found", 404
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080)
