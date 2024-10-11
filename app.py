@@ -49,9 +49,13 @@ def handle_follow(event):
     Handle follow event
     """
     line_id = event.source.user_id
+    line_user_name = line_bot_api.get_profile(line_id).display_name
     c.execute('INSERT INTO users (line_id) VALUES (?)', (line_id,))
     conn.commit()
-    welcome_message = "追加ありがとうございます！\nこのアカウントはクリーンビューティーに関する質問について、論文の情報をもとに丁寧にお答えします！"
+    welcome_message = f'''
+        {line_user_name}さん、追加ありがとうございます！\n
+        このアカウントはクリーンビューティーに関する質問について、論文の情報をもとに丁寧にお答えします。\n
+        1問1答形式でお答えしますので、前の会話を考慮できないことに注意してください。'''
     line_bot_api.push_message(
         to=line_id,
         messages=[
