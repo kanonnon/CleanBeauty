@@ -1,5 +1,5 @@
 import os
-import sqlite3
+from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, request, abort, send_file
 from linebot import (
@@ -9,6 +9,9 @@ from linebot.exceptions import (
     InvalidSignatureError
 )
 from linebot.models import FollowEvent, MessageEvent, TextMessage, TextSendMessage
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
 
 from rag import return_rag_result
 
@@ -19,8 +22,13 @@ handler = WebhookHandler(os.getenv('LINE_CHANNEL_SECRET'))
 
 app = Flask(__name__)
 
-conn = sqlite3.connect('database.db', check_same_thread=False)
-c = conn.cursor()
+cred = credentials.Certificate("/etc/secrets/firebase-adminsdk.json")
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://cbj-scholar-default-rtdb.firebaseio.com',
+    'databaseAuthVariableOverride': {
+        'uid': 'my-service-worker'
+    }
+})
 
 
 @app.route("/")
@@ -50,12 +58,12 @@ def handle_follow(event):
     """
     line_id = event.source.user_id
     line_user_name = line_bot_api.get_profile(line_id).display_name
-    c.execute('INSERT INTO users (line_id) VALUES (?)', (line_id,))
-    conn.commit()
-    welcome_message = f'''
-        {line_user_name}さん、追加ありがとうございます！\n
-        このアカウントはクリーンビューティーに関する質問について、論文の情報をもとに丁寧にお答えします。\n
-        1問1答形式でお答えしますので、前の会話を考慮できないことに注意してください。'''
+    users_ref = db.reference('/users')
+    users_ref.push({
+        'line_id': line_id,
+        'line_user_name': line_user_name
+    })
+    welcome_message = f"{line_user_name}さん、追加ありがとうございます！\nこのアカウントはクリーンビューティーに関する質問について、論文の情報をもとに丁寧にお答えします。1問1答形式でお答えしますので、前の会話を考慮できないことに注意してください。"
     line_bot_api.push_message(
         to=line_id,
         messages=[
@@ -72,12 +80,16 @@ def handle_text_message(event):
     line_id = event.source.user_id
     question = event.message.text
     
-    c.execute('SELECT id FROM users WHERE line_id = ?', (line_id,))
-    user = c.fetchone()
-    user_id = user[0]
+    users_ref = db.reference('/users')
+    user = users_ref.order_by_child('line_id').equal_to(line_id).get()
+    user_id = list(user.keys())[0]
 
-    c.execute('INSERT INTO questions (user_id, question) VALUES (?,?)', (user_id, question))
-    conn.commit()
+    questions_ref = db.reference('/questions')
+    questions_ref.push({
+        'user_id': user_id,
+        'question': question,
+        'date': datetime.now().isoformat()
+    })
     result = return_rag_result(question)
     line_bot_api.reply_message(
             event.reply_token,
@@ -85,14 +97,6 @@ def handle_text_message(event):
                 TextSendMessage(text=result)
             ]
     )
-
-
-@app.route('/download-db', methods=['GET'])
-def download_db():
-    if os.path.exists("database.db"):
-        return send_file("database.db", as_attachment=True)
-    else:
-        return "Database file not found", 404
 
 
 if __name__ == "__main__":
