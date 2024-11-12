@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, request, abort, send_file
@@ -14,6 +15,9 @@ from firebase_admin import credentials
 from firebase_admin import db
 
 from rag import return_rag_result
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -74,29 +78,80 @@ def handle_follow(event):
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
-    """
-    Handle text message
-    """
     line_id = event.source.user_id
     question = event.message.text
-    
-    users_ref = db.reference('/users')
-    user = users_ref.order_by_child('line_id').equal_to(line_id).get()
-    user_id = list(user.keys())[0]
 
-    questions_ref = db.reference('/questions')
-    questions_ref.push({
-        'user_id': user_id,
-        'question': question,
-        'date': datetime.now().isoformat()
-    })
-    result = return_rag_result(question)
-    line_bot_api.reply_message(
+    users_ref = db.reference('/users')
+    try:
+        user = users_ref.order_by_child('line_id').equal_to(line_id).get()
+        if not user:
+            logger.warning(f"User information not found: {line_id}")
+            error_message = "ユーザー情報が見つかりません。最初に友達登録をしてください。"
+            line_bot_api.reply_message(
+                event.reply_token,
+                [
+                    TextSendMessage(text=error_message)
+                ]
+            )
+            return
+
+        user_id = list(user.keys())[0]
+        logger.info(f"Successfully retrieved user ID: {user_id}")
+
+    except Exception as e:
+        logger.error(f"Error retrieving user information from Firebase: {e}")
+        error_message = "ユーザー情報の取得に失敗しました。もう一度お試しください。"
+        line_bot_api.reply_message(
+            event.reply_token,
+            [
+                TextSendMessage(text=error_message)
+            ]
+        )
+        return
+
+    try:
+        questions_ref = db.reference('/questions')
+        questions_ref.push({
+            'user_id': user_id,
+            'question': question,
+            'date': datetime.now().isoformat()
+        })
+        logger.info(f"Question added to Firebase: {question}")
+        
+    except Exception as e:
+        logger.error(f"Error adding question to Firebase: {e}")
+        error_message = "質問の記録に失敗しました。もう一度お試しください。"
+        line_bot_api.reply_message(
+            event.reply_token,
+            [
+                TextSendMessage(text=error_message)
+            ]
+        )
+        return
+
+    try:
+        result = return_rag_result(question)
+        if not result:
+            logger.warning("Received empty response from RAG. Using default message.")
+            result = "申し訳ありませんが、適切な回答を見つけることができませんでした。"
+
+        line_bot_api.reply_message(
             event.reply_token,
             [
                 TextSendMessage(text=result)
             ]
-    )
+        )
+        logger.info("Response sent to the user.")
+
+    except Exception as e:
+        logger.error(f"Error retrieving RAG result: {e}")
+        error_message = "回答を取得する際にエラーが発生しました。もう一度お試しください。"
+        line_bot_api.reply_message(
+            event.reply_token,
+            [
+                TextSendMessage(text=error_message)
+            ]
+        )
 
 
 if __name__ == "__main__":
