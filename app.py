@@ -1,5 +1,8 @@
 import os
 import logging
+import requests
+import time
+import threading
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, request, abort, send_file
@@ -154,5 +157,23 @@ def handle_text_message(event):
         )
 
 
+def keep_alive():
+    """
+    Periodically send requests to the application itself to prevent spin down.
+    """
+    while True:
+        try:
+            response = requests.get("https://cbj-scholar.onrender.com")
+            if response.status_code == 200:
+                logger.info("Keep-alive request successful.")
+            else:
+                logger.warning(f"Unexpected status code: {response.status_code}")
+        except Exception as e:
+            logger.error(f"Error in keep-alive request: {e}")
+        
+        time.sleep(300)
+
+
 if __name__ == "__main__":
+    threading.Thread(target=keep_alive, daemon=True).start()
     app.run(host='0.0.0.0', port=5000)
