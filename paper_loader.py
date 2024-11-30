@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from datetime import datetime
 from openai import OpenAI
 from tqdm import tqdm
 from langchain_community.document_loaders import PyPDFLoader
@@ -7,6 +8,12 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
 client = OpenAI()
+
+
+def log_error(log_file_path, message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(log_file_path, "a") as log_file:
+        log_file.write(f"[{timestamp}] {message}\n")
 
 
 def load_pdf_content(file_path):
@@ -26,23 +33,33 @@ def create_sections_from_content(file_path):
 
 
 def get_embedding(text, model="text-embedding-3-small"):
-   text = text.replace("\n", " ")
-   return client.embeddings.create(input = [text], model=model).data[0].embedding
+    text = text.replace("\n", " ")
+    output = client.embeddings.create(input = [text], model=model).data[0].embedding
+    return output
 
 
 def main():
-    embeddings = []
-    with open("data/loaded_paper.txt", "w") as file:
-        for filename in tqdm(os.listdir("paper")):
-            file_path = os.path.join("paper", filename)
-            if os.path.isfile(file_path):
-                sections = create_sections_from_content(file_path)
-                
-                for section in sections:
-                    section = section.replace("\n", "")
-                    file.write(f"{section}\n")
+    for filename in tqdm(os.listdir("data/papers")):
+        embeddings = []
+        file_path = os.path.join("data/papers", filename)
+        file_id = filename.split(".")[0]
+        if not file.endswith(".pdf"):
+            continue
+        try:
+            sections = create_sections_from_content(file_path)
+        except Exception as e:
+            log_error("data/errors.txt", f"Error loading content from {file_path}: {e}")
+            continue
+        with open(f"data/texts/{file_id}.txt", "w") as file:
+            for section in sections:
+                section = section.replace("\n", "")
+                file.write(f"{section}\n")
+                try:
                     embeddings.append(get_embedding(section))
-    np.save("data/embedded_paper.npy", np.array(embeddings))
+                except Exception as e:
+                    log_error("data/errors.txt", f"Error embedding text from {file_path}: {e}")
+                    continue
+        np.save(f"data/embeddings/{file_id}.npy", np.array(embeddings))
 
 
 if __name__ == '__main__':

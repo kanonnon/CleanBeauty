@@ -1,5 +1,7 @@
 __pycache__
 .env
 .python-version
-paper/
+data/papers/
+data/loaded_papers/
+data/tmp/
 credentials/

@@ -1,10 +1,8 @@
 import os
 import logging
-import requests
-import time
-import threading
 from datetime import datetime
 from dotenv import load_dotenv
+
 from flask import Flask, request, abort
 from linebot import (
     LineBotApi, WebhookHandler
@@ -70,7 +68,7 @@ def handle_follow(event):
         'line_id': line_id,
         'line_user_name': line_user_name
     })
-    welcome_message = f"{line_user_name}さん、追加ありがとうございます！\nこのアカウントはクリーンビューティーに関する質問について、論文の情報をもとに丁寧にお答えします。1問1答形式でお答えしますので、前の会話を考慮できないことに注意してください。"
+    welcome_message = f"{line_user_name}さん、追加ありがとうございます🫶\n\nこのアカウントはクリーンビューティーに関する質問について、論文の情報をもとに丁寧にお答えします。1問1答形式でお答えしますので、前の会話を考慮できないことに注意してください。"
     line_bot_api.push_message(
         to=line_id,
         messages=[
@@ -157,20 +155,5 @@ def handle_text_message(event):
         )
 
 
-def keep_alive():
-    while True:
-        try:
-            response = requests.get("https://cbj-scholar.onrender.com")
-            if response.status_code == 200:
-                logger.info("Keep-alive request successful.")
-            else:
-                logger.warning(f"Unexpected status code: {response.status_code}")
-        except Exception as e:
-            logger.error(f"Error in keep-alive request: {e}")
-        
-        time.sleep(60)
-
-
 if __name__ == "__main__":
-    threading.Thread(target=keep_alive, daemon=True).start()
     app.run(host='0.0.0.0', port=5000)
