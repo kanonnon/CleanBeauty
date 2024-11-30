@@ -5,7 +5,7 @@ import time
 import threading
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import Flask, request, abort, send_file
+from flask import Flask, request, abort
 from linebot import (
     LineBotApi, WebhookHandler
 )
@@ -158,9 +158,6 @@ def handle_text_message(event):
 
 
 def keep_alive():
-    """
-    Periodically send requests to the application itself to prevent spin down.
-    """
     while True:
         try:
             response = requests.get("https://cbj-scholar.onrender.com")
@@ -171,7 +168,7 @@ def keep_alive():
         except Exception as e:
             logger.error(f"Error in keep-alive request: {e}")
         
-        time.sleep(300)
+        time.sleep(60)
 
 
 if __name__ == "__main__":
