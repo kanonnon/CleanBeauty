@@ -5,3 +5,4 @@ data/papers/
 data/loaded_papers/
 data/tmp/
 credentials/
+embeddings.index
