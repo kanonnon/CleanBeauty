@@ -3,7 +3,6 @@ import json
 from dotenv import load_dotenv
 import numpy as np
 from openai import OpenAI
-from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -53,41 +52,6 @@ def get_embedding(text, model="text-embedding-3-small"):
    text = text.replace("\n", " ")
    return client.embeddings.create(input = [text], model=model).data[0].embedding
 
-# @profile
-# def find_similar_contexts(query, top_n=10):
-#     query_embedding = get_embedding(query)
-    
-#     embeddings_dir = "data/embeddings"
-#     texts_dir = "data/texts"
-#     all_embeddings = []
-#     file_indices = []
-#     file_mapping = {}
-    
-#     for file in os.listdir(embeddings_dir):
-#         if file.endswith(".npy"):
-#             paper_id = os.path.splitext(file)[0]
-#             embeddings = np.load(os.path.join(embeddings_dir, file))
-#             all_embeddings.extend(embeddings)
-#             for i in range(len(embeddings)):
-#                 file_indices.append(f"{paper_id}-{i}")
-#             with open(os.path.join(texts_dir, f"{paper_id}.txt"), "r") as text_file:
-#                 lines = text_file.readlines()
-#                 file_mapping[paper_id] = lines
-
-#     all_embeddings = np.array(all_embeddings)
-#     similarities = cosine_similarity([query_embedding], all_embeddings)[0]
-#     top_indices = np.argsort(similarities)[-(top_n):][::-1]
-#     top_similarities = similarities[top_indices]
-    
-#     similar_contexts = {}
-#     for idx, similarity in zip(top_indices, top_similarities):
-#         file_index = file_indices[idx]
-#         paper_id, line_index = file_index.split("-")
-#         line_index = int(line_index)
-#         context = file_mapping[paper_id][line_index].strip()
-#         similar_contexts[idx] = {"paper_id": paper_id, "context": context, "similarity": similarity}
-    
-#     return similar_contexts
 
 def find_similar_contexts(query, top_n=10):
     query_embedding = np.array(get_embedding(query), dtype='float32')
@@ -184,6 +148,6 @@ def return_rag_result(user_question):
     return answer
 
 
-if __name__ == '__main__':
-    dim  = 1536
-    build_faiss_index_with_chunks(dim)
+# if __name__ == '__main__':
+#     dim  = 1536
+#     build_faiss_index_with_chunks(dim)
