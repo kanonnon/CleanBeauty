@@ -43,7 +43,7 @@ def main():
         embeddings = []
         file_path = os.path.join("data/papers", filename)
         file_id = filename.split(".")[0]
-        if not file.endswith(".pdf"):
+        if not filename.endswith(".pdf"):
             continue
         try:
             sections = create_sections_from_content(file_path)
