@@ -11,8 +11,6 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.runnables import RunnablePassthrough
 import faiss
 
-from memory_profiler import profile
-
 
 client = OpenAI()
 
