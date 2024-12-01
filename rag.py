@@ -63,7 +63,8 @@ def get_title_and_author(paper_id):
         if paper['paper_id'] == paper_id:
             title = paper['title']
             author = paper['author']
-            return title, author
+            url = paper['url']
+            return title, author, url
         
 
 def create_context(similar_contexts):
@@ -71,10 +72,10 @@ def create_context(similar_contexts):
     for idx, context_info in similar_contexts.items():
         paper_id = context_info['paper_id']
         context = context_info['context']
-        title, author = get_title_and_author(paper_id)
-        context = f"Paper Title: {title}\n Author: {author}\n{context}"
+        title, author, url = get_title_and_author(paper_id)
+        context = f"Paper Title: {title}\nAuthor: {author}\nURL: {url}\n\nContext: {context}"
         contexts.append(context)
-    return "\n\n".join(contexts)
+    return "\n\n\n".join(contexts)
 
 
 def create_answer(context, user_question):
@@ -82,10 +83,11 @@ def create_answer(context, user_question):
     retriever = vector_store.as_retriever()
 
     template = '''
-        質問内容が以下の文脈と関連のある場合、この文脈のみに基づいて質問に答えなさい。
-        また、その情報の元となる論文のタイトルと著者名を記載しなさい。
+        質問内容が以下の文脈と関連のある場合、この内容のみに基づいて質問に答えなさい。
+        回答するときは必ず、下記の論文情報を参照し、情報の元となる論文のタイトルと著者名、URLを記載しなさい。
         関連のない場合、論文には記載がなかったことを述べた上で、一般的な知識をもとに答えなさい。
-        日本語で論理的に答えなさい。: {context}
+        日本語で論理的に答えなさい。
+        {context}
         質問: {question}
     '''
     prompt = ChatPromptTemplate.from_template(template)
